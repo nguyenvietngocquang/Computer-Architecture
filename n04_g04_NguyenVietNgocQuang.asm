@@ -21,10 +21,12 @@ script3: .asciiz "90,3000,0;180,3000,0;180,5300,1;0,2700,0;90,3000,1;0,2600,0;18
 # < Xu ly tren Key Matrix >
 	li $t3, IN_ADDRESS_HEXA_KEYBOARD
 	li $t4, OUT_ADDRESS_HEXA_KEYBOARD
-polling: 
+	addi $t8, $zero, 0
+	addi $t9, $zero, 0
+polling:
 	li $t5, 0x01 # Hang 1 cua Key matrix
-	sb $t5, 0($t3) 
-	lb $a0, 0($t4) 
+	sb $t5, 0($t3)
+	lb $a0, 0($t4)
 	bne $a0, 0x11, NOT_NUMPAD_0 # Button 0 gia tri 0x11
 	la $a1, script1
 	j START
@@ -47,16 +49,16 @@ COME_BACK: j polling # Khi 0, 4, 8 khong duoc chon -> Quay lai doc so tiep
 # < Xu li Mars Bot >
 START:
 	jal GO
-READ_SCRIPT: 
+READ_SCRIPT:
 	addi $t0, $zero, 0 # Luu gia tri rotate
 	addi $t1, $zero, 0 # Luu gia tri time
 	
  	READ_ROTATE:
  	add $t7, $a1, $t6 # Dich bit
 	lb $t5, 0($t7)  # Doc cac ki tu cua script
-	beq $t5, 0, END # Ket thuc script khi gap null
+	beq $t5, 0, CHECK_AGAIN # Ket thuc script khi gap null
  	beq $t5, 44, READ_TIME # Gap ki tu ','
- 	mul $t0, $t0, 10 
+ 	mul $t0, $t0, 10
  	addi $t5, $t5, -48 # So 0 co thu tu 48 trong bang ASCII
  	add $t0, $t0, $t5  # Cong cac chu so lai voi nhau
  	addi $t6, $t6, 1 # Tang so bit can dich chuyen len 1
@@ -67,7 +69,7 @@ READ_SCRIPT:
 	jal ROTATE
  	addi $t6, $t6, 1
  	add $t7, $a1, $t6 # $a1 luu dia chi cua script
-	lb $t5, 0($t7) 
+	lb $t5, 0($t7)
 	beq $t5, 44, READ_TRACK
 	mul $t1, $t1, 10
  	addi $t5, $t5, -48
@@ -79,8 +81,15 @@ READ_SCRIPT:
  	add $a0, $zero, $t1 # Thoi gian sleep $t1
  	addi $t6, $t6, 1
  	add $t7, $a1, $t6
-	lb $t5, 0($t7) 
+	lb $t5, 0($t7)
  	addi $t5, $t5, -48
+ 	addi $t8, $t8, 1
+ 	bne $t8, 3, BEGIN
+ 	li $at, WHEREX
+	lw $a3, 0($at)
+	li $at, WHEREY
+	lw $a2, 0($at)
+BEGIN:
  	beq $t5, $zero, CHECK_UNTRACK # 0=untrack | 1=track
  	jal UNTRACK
 	jal TRACK
@@ -95,32 +104,53 @@ INCREAMENT:
  	j READ_SCRIPT
 
 GO: 
- 	li $at, MOVING 
+ 	li $at, MOVING
  	addi $k0, $zero, 1
- 	sb $k0, 0($at) 
+ 	sb $k0, 0($at)
  	jr $ra
 
 STOP: 
-	li $at, MOVING 
+	li $at, MOVING
  	sb $zero, 0($at)
  	jr $ra
 
 TRACK: 
-	li $at, LEAVETRACK 
+	li $at, LEAVETRACK
  	addi $k0, $zero, 1
 	sb $k0, 0($at)
  	jr $ra
 
 UNTRACK:
-	li $at, LEAVETRACK 
- 	sb $zero, 0($at) 
+	li $at, LEAVETRACK
+ 	sb $zero, 0($at)
  	jr $ra
 
 ROTATE: 
-	li $at, HEADING 
- 	sw $a0, 0($at) 
+	li $at, HEADING
+ 	sw $a0, 0($at)
  	jr $ra
  	
+CHECK_AGAIN:
+	addi $t9, $t9, 1
+	beq $t9, 2, END
+
+Y:	li $at, HEADING
+	sw $zero, 0($at)
+	li $at, WHEREY
+	lw $s0, 0($at)
+	bne $s0, $a2, Y
+	
+X:	addi $s2, $zero, 270
+	li $at, HEADING
+	sw $s2, 0($at)
+	li $at, WHEREX
+	lw $s1, 0($at)
+	bne $s1, $a3, X
+	
+	la $a1, script1
+	addi $t6, $zero, 21
+	j READ_SCRIPT
+
 END:
 	jal STOP
 	li $v0, 10
